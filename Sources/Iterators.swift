@@ -44,8 +44,7 @@ public extension RecurrenceRule {
         if let exdates = exdate?.dates, let component = exdate?.component {
             for occurrence in occurrences {
                 for exdate in exdates {
-                    if calendar.isDate(occurrence, equalTo: exdate, toGranularity: component) {
-                        let index = occurrences.index(of: occurrence)!
+                    if calendar.isDate(occurrence, equalTo: exdate, toGranularity: component), let index = occurrences.index(of: occurrence) {
                         occurrences.remove(at: index)
                         break
                     }
@@ -80,8 +79,7 @@ public extension RecurrenceRule {
         if let exdates = exdate?.dates, let component = exdate?.component {
             for occurrence in occurrences {
                 for exdate in exdates {
-                    if calendar.isDate(occurrence, equalTo: exdate, toGranularity: component) {
-                        let index = occurrences.index(of: occurrence)!
+                    if calendar.isDate(occurrence, equalTo: exdate, toGranularity: component), let index = occurrences.index(of: occurrence) {
                         occurrences.remove(at: index)
                         break
                     }
