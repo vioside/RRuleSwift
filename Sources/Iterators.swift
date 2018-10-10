@@ -31,8 +31,12 @@ public extension RecurrenceRule {
         }
 
         let ruleJSONString = toJSONString(endless: endlessRecurrenceCount)
-        let _ = Iterator.rruleContext?.evaluateScript("var rule = new RRule({ \(ruleJSONString) })")
-        guard let allOccurrences = Iterator.rruleContext?.evaluateScript("rule.all()").toArray() as? [Date] else {
+		
+		guard let _ = Iterator.rruleContext?.evaluateScript("var rule = new RRule({ \(ruleJSONString) })") else {
+			return []
+		}
+		
+        guard let allOccurrences = Iterator.rruleContext?.evaluateScript("rule.all()")?.toArray() as? [Date] else {
             return []
         }
 
@@ -66,8 +70,12 @@ public extension RecurrenceRule {
         let untilDateJSON = RRule.ISO8601DateFormatter.string(from: untilDate)
 
         let ruleJSONString = toJSONString(endless: endlessRecurrenceCount)
-        let _ = Iterator.rruleContext?.evaluateScript("var rule = new RRule({ \(ruleJSONString) })")
-        guard let betweenOccurrences = Iterator.rruleContext?.evaluateScript("rule.between(new Date('\(beginDateJSON)'), new Date('\(untilDateJSON)'))").toArray() as? [Date] else {
+		
+		guard let _ = Iterator.rruleContext?.evaluateScript("var rule = new RRule({ \(ruleJSONString) })") else {
+			return []
+		}
+		
+        guard let betweenOccurrences = Iterator.rruleContext?.evaluateScript("rule.between(new Date('\(beginDateJSON)'), new Date('\(untilDateJSON)'))")?.toArray() as? [Date] else {
             return []
         }
 
