@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/teambition/RRuleSwift.git", :tag => "#{s.version}" }
   s.source_files = "Sources", "Sources/**/*.{h,m}"
   s.watchos.exclude_files = "Sources/JavaScriptBridge.swift", "Sources/Iterators.swift"
-  s.resource     = "Sources/lib/*.js"
+  s.resource     = "js/dist/*.js"
   s.frameworks   = "Foundation", "EventKit"
   s.ios.frameworks = "Foundation", "EventKit", "JavaScriptCore"
 end

@@ -15,7 +15,7 @@ internal struct JavaScriptBridge {
     private class DummyClass {}
     
     internal static func rrulejs() -> String? {
-        let libPath = Bundle(for: DummyClass.self).path(forResource: "rrule", ofType: "js") ?? Bundle.main.path(forResource: "rrule", ofType: "js")
+        let libPath = Bundle(for: DummyClass.self).path(forResource: "RRuleSwift.bundle", ofType: "js") ?? Bundle.main.path(forResource: "RRuleSwift.bundle", ofType: "js")
         guard let rrulelibPath = libPath else {
             return nil
         }
