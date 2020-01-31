@@ -140,10 +140,14 @@ public struct RRule {
             if ruleName == "BYDAY" {
                 // These variables will define the weekdays where the recurrence will be applied.
                 // In the RFC documentation, it is specified as BYDAY, but was renamed to avoid the ambiguity of that argument.
-                let byweekday = ruleValue.components(separatedBy: ",").compactMap({ (string) -> EKWeekday? in
-                    return EKWeekday.weekdayFromSymbol(string)
+                let byweekday = ruleValue.components(separatedBy: ",").compactMap({ (string) -> (Int?, EKWeekday)? in
+                    guard let parsedSymbol = EKWeekday.weekdayFromSymbol(String(string.suffix(2))) else { return nil }
+                    let specific = Int(string.prefix(string.count - 2))
+                    return (specific, parsedSymbol)
                 })
-                recurrenceRule.byweekday = byweekday.sorted(by: <)
+                recurrenceRule.byweekday = byweekday.sorted(by: { (a, b) -> Bool in
+                    return a.1 < b.1
+                })
             }
 
             if ruleName == "BYHOUR" {
@@ -245,11 +249,12 @@ public struct RRule {
             rruleString += "BYMONTHDAY=\(bymonthdayStrings.joined(separator: ","));"
         }
 
-        let byweekdaySymbols = rule.byweekday.map({ (weekday) -> String in
-            return weekday.toSymbol()
-        })
-        if byweekdaySymbols.count > 0 {
-            rruleString += "BYDAY=\(byweekdaySymbols.joined(separator: ","));"
+        let byweekdayElements = rule.byweekday.map { weekdayTuple -> String in
+            let modifier = weekdayTuple.0.flatMap { "\($0)" } ?? ""
+            return "\(modifier)\(weekdayTuple.1.toSymbol())"
+        }
+        if byweekdayElements.count > 0 {
+            rruleString += "BYDAY=\(byweekdayElements.joined(separator: ","));"
         }
 
         let byhourStrings = rule.byhour.map({ (hour) -> String in
