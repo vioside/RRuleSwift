@@ -52,12 +52,12 @@ public extension RecurrenceRule {
         return events
     }
     
-    func occurrences(between date: Date = .distantPast, and otherDate: Date = .distantFuture, limit endlessRecurrenceCount: Int = Iterator.endlessRecurrenceCount, timeZone: TimeZone = .current) -> [Date] {
+    func occurrences(between date: Date = .distantPast, and otherDate: Date = .distantFuture, limit endlessRecurrenceCount: Int = Iterator.endlessRecurrenceCount, timeZone: TimeZone? = nil) -> [Date] {
         guard let _ = JavaScriptBridge.rrulejs() else {
             return []
         }
         
-        let options = "{ \"tzid\": \"\(timeZone.identifier)\" }"
+        let options = timeZone.flatMap { "{ \"tzid\": \"\($0.identifier)\" }" } ?? "{}"
         
         return iterate(toRRuleString(), options: options, beginDate: date, endDate: otherDate)
     }
