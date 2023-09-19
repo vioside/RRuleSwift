@@ -117,11 +117,12 @@ internal extension RecurrenceRule {
             jsonString += "bymonthday: [\(bymonthdayStrings.joined(separator: ","))],"
         }
 
-        let byweekdayJSSymbols = byweekday.map({ (weekday) -> String in
-            return weekday.toJSONSymbol()
-        })
-        if byweekdayJSSymbols.count > 0 {
-            jsonString += "byweekday: [\(byweekdayJSSymbols.joined(separator: ","))],"
+        let byweekdayElements = byweekday.map { weekdayTuple -> String in
+            let modifier = weekdayTuple.0.flatMap { "\($0)" } ?? ""
+            return "\(modifier)\(weekdayTuple.1.toSymbol())"
+        }
+        if byweekdayElements.count > 0 {
+            jsonString += "byweekday: [\(byweekdayElements.joined(separator: ","))],"
         }
 
         let byhourStrings = byhour.map({ (hour) -> String in
