@@ -14,6 +14,7 @@ public struct RRule {
         let dateFormatter = DateFormatter("yyyyMMdd'T'HHmmss'Z'")
         return dateFormatter
     }()
+	
     public static let ymdDateFormatter: DateFormatter = {
         let dateFormatter = DateFormatter("yyyyMMdd")
         return dateFormatter
@@ -23,10 +24,49 @@ public struct RRule {
         let dateFormatter = DateFormatter("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
         return dateFormatter
     }()
-
+    
+    internal static func tzDateFormatter(_ timeZone: TimeZone?) -> DateFormatter {
+        let tzDateFormatter = DateFormatter("yyyyMMdd'T'HHmmss")
+        tzDateFormatter.timeZone = timeZone
+        return tzDateFormatter
+    }
+    
     public static func ruleFromString(_ string: String) -> RecurrenceRule? {
-        let string = string.trimmingCharacters(in: .whitespaces)
-        guard let range = string.range(of: "RRULE:"), range.lowerBound == string.startIndex else {
+        var string = string.trimmingCharacters(in: .whitespaces)
+        
+        var recurrenceRule = RecurrenceRule(frequency: .daily)
+        
+        if let headerRange = string.range(of: "DTSTART"),
+            headerRange.lowerBound == string.startIndex {
+            let components = string.components(separatedBy: "\n")
+            if components.count == 2 {
+                string = components[1]
+                let header = components[0]
+                let headerComponents = header.components(separatedBy: ":")
+                guard headerComponents.count == 2 else { return nil }
+                let headerName = headerComponents[0]
+                let headerValue = headerComponents[1]
+                
+                if headerName.contains("TZID") {
+                    let tzComponents = headerName.components(separatedBy: "=")
+                    guard tzComponents.count == 2 else { return nil }
+                    let timeZoneIdentifier = tzComponents[1]
+                    let timeZone = TimeZone(identifier: timeZoneIdentifier)
+                    recurrenceRule.timeZone = timeZone
+                    guard let startDate = RRule.tzDateFormatter(timeZone).date(from: headerValue) else {
+                        return nil
+                    }
+                    recurrenceRule.startDate = startDate
+                } else if let startDate = dateFormatter.date(from: headerValue) {
+                    recurrenceRule.startDate = startDate
+                } else if let startDate = realDate(headerValue) {
+                    recurrenceRule.startDate = startDate
+                }
+            }
+        }
+        
+        guard let range = string.range(of: "RRULE:"),
+            range.lowerBound == string.startIndex else {
             return nil
         }
         let ruleString = String(string.suffix(from: range.upperBound))
@@ -36,8 +76,7 @@ public struct RRule {
             }
             return rule
         }
-
-        var recurrenceRule = RecurrenceRule(frequency: .daily)
+        
         var ruleFrequency: RecurrenceFrequency?
         for rule in rules {
             let ruleComponents = rule.components(separatedBy: "=")
@@ -139,10 +178,14 @@ public struct RRule {
             if ruleName == "BYDAY" {
                 // These variables will define the weekdays where the recurrence will be applied.
                 // In the RFC documentation, it is specified as BYDAY, but was renamed to avoid the ambiguity of that argument.
-                let byweekday = ruleValue.components(separatedBy: ",").compactMap({ (string) -> EKWeekday? in
-                    return EKWeekday.weekdayFromSymbol(string)
+                let byweekday = ruleValue.components(separatedBy: ",").compactMap({ (string) -> (Int?, EKWeekday)? in
+                    guard let parsedSymbol = EKWeekday.weekdayFromSymbol(String(string.suffix(2))) else { return nil }
+                    let specific = Int(string.prefix(string.count - 2))
+                    return (specific, parsedSymbol)
                 })
-                recurrenceRule.byweekday = byweekday.sorted(by: <)
+                recurrenceRule.byweekday = byweekday.sorted(by: { (a, b) -> Bool in
+                    return a.1 < b.1
+                })
             }
 
             if ruleName == "BYHOUR" {
@@ -185,8 +228,6 @@ public struct RRule {
         rruleString += "INTERVAL=\(interval);"
 
         rruleString += "WKST=\(rule.firstDayOfWeek.toSymbol());"
-
-        rruleString += "DTSTART=\(dateFormatter.string(from: rule.startDate as Date));"
 
         if let endDate = rule.recurrenceEnd?.endDate {
             rruleString += "UNTIL=\(dateFormatter.string(from: endDate));"
@@ -244,11 +285,12 @@ public struct RRule {
             rruleString += "BYMONTHDAY=\(bymonthdayStrings.joined(separator: ","));"
         }
 
-        let byweekdaySymbols = rule.byweekday.map({ (weekday) -> String in
-            return weekday.toSymbol()
-        })
-        if byweekdaySymbols.count > 0 {
-            rruleString += "BYDAY=\(byweekdaySymbols.joined(separator: ","));"
+        let byweekdayElements = rule.byweekday.map { weekdayTuple -> String in
+            let modifier = weekdayTuple.0.flatMap { "\($0)" } ?? ""
+            return "\(modifier)\(weekdayTuple.1.toSymbol())"
+        }
+        if byweekdayElements.count > 0 {
+            rruleString += "BYDAY=\(byweekdayElements.joined(separator: ","));"
         }
 
         let byhourStrings = rule.byhour.map({ (hour) -> String in
@@ -275,8 +317,16 @@ public struct RRule {
         if String(rruleString.suffix(from: rruleString.index(rruleString.endIndex, offsetBy: -1))) == ";" {
             rruleString.remove(at: rruleString.index(rruleString.endIndex, offsetBy: -1))
         }
+        
+        var dateString = dateFormatter.string(from: rule.startDate)
+        var tzId = ""
+        if let timeZone = rule.timeZone {
+            tzId = ";TZID=\(timeZone.identifier)"
+            dateString = RRule.tzDateFormatter(timeZone).string(from: rule.startDate)
+        }
+        let dtStartHeader = "DTSTART\(tzId):\(dateString)"
 
-        return rruleString
+        return [dtStartHeader, rruleString].joined(separator: "\n")
     }
     
     static func realDate(_ dateString: String?) -> Date? {
